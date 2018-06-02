@@ -1,0 +1,20 @@
+<div>{{mensagem}}</div>
+<div>{{deslocamento}}</div>
+<div>{{debug}}</div>
+
+<svg width="800" viewBox="-100 -2000 3200 5400">
+  <rect x="-100" y="-2000" width="3200" height="5400" style="fill:#dddddd;stroke-width:1;stroke:#000000" />
+  <rect x="-50" y="-50" width="3100" height="3050" style="fill:#999999;stroke-width:1;stroke:#000000" />
+  <g *ngFor="let part of parts">
+    <rect [attr.x]="part.x" [attr.y]="part.y" [attr.width]="part.w" [attr.height]="part.h" style="fill:#A4DFFD;stroke-width:1;stroke:#000000" />
+    <text [attr.x]="part.x" [attr.y]="part.y+70" fill="#000000" font-family="arial" font-size="50">{{part.info}} {{part.w}}x{{part.h}}</text>
+  </g>
+
+  <g>
+    <rect x="-50" y="490" width="3100" height="20" style="fill:#FFFF00;stroke-width:1;stroke:#000000" />
+
+
+  </g>
+
+
+</svg>
