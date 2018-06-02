@@ -10,18 +10,29 @@ import { MachineService } from '../machine.service';
 })
 export class MachineComponent implements OnInit {
 
-  acaleracao = 10;
 
+  refX = 0;
+  refY = 0;
+  ticks = 0;
+  currentBoard;
+  velocidade = 10;
   deslocamento = "0";
   mensagem = "Carregando";
   parts = [];
   solution;
   resume;
-  estadoV;
+  productionLine;
   space = 2990; //Posição incial das peças de trabalho
   ready = 3050; //Posição incial das peças prontas
   yShaw = 500;  //Posição da serra
   debug = "";
+  cuts = [];
+  nextInstructions = [];
+  pausa = 0;
+  iCut = 1;
+  aY = this.velocidade;
+  currentInstruction = { part: undefined, targetY: undefined, cut: undefined, done: undefined };
+  oldInstructions = [];
 
   constructor(private service: MachineService) { }
 
@@ -29,146 +40,140 @@ export class MachineComponent implements OnInit {
     this.service.getSolution().then(s => {
       this.solution = s.solution;
       this.resume = s.resume;
+      this.productionLine = this.solution.productionLine;
       this.iniciaCorte();
     });
   }
 
-  atualizaMensagem(cut) {
-    let sData = "";
-    if (cut.data) {
-      if (cut.data.isCleaningCut) {
-        sData += `Limpeza `;
-      }
-      if (cut.data.partNumber) {
-        sData += `Part:${cut.data.partNumber} `;
-      }
-    }
-    this.mensagem = `Corte ${cut.number} ${sData} Direção:${cut.direction} Fase:${cut.phase} Role:${cut.role}`;
+  turnPart(part) {
+    part.y += part.h;
+    [part.w, part.h] = [part.h, part.w];
+  }
+  unturnPart(part) {
+    part.y -= part.w;
+    [part.w, part.h] = [part.h, part.w];
   }
 
 
-
-  corta(estado) {
-    let antigaParge = JSON.parse(JSON.stringify(estado.currentPart));
-    let cutSize = (estado.cut.direction === "horizontal" ? estado.cut.y1 : estado.cut.x1);
-    estado.currentPart.h = (estado.currentPart.h - cutSize) > 0 ? (estado.currentPart.h - cutSize) : 0.1;
-    let novaParte = {
-      x: estado.currentPart.x,
-      y: this.yShaw,
-      w: estado.currentPart.w,
-      h: cutSize,
-      info: ``,
-      targetY: 0
-    }
-
-
-    if (estado.cut.data && estado.cut.data.partNumber) {
-      novaParte.targetY = this.ready;
-      this.ready += (cutSize + 10);
-      novaParte.info = `P${estado.cut.data.partNumber} C${estado.cut.number}`;
-    }
-    else if (estado.cut.data && estado.cut.data.isCleaningCut) {
-      novaParte.targetY = this.ready;
-      this.ready += 60;
-      novaParte.info = `C${estado.cut.number}`;
+  corta() {
+    let partBeforeCut = JSON.parse(JSON.stringify(this.currentInstruction));
+    let deltaPhase = 0;
+    let cutSize = Math.abs(this.currentInstruction.cut.direction === "horizontal" ? this.currentInstruction.cut.y1 - this.refX : this.currentInstruction.cut.x1 - this.refY) + this.productionLine.sawMachine.sawThickness;
+    if (this.currentInstruction.cut.direction === "horizontal") {
+      this.refY = this.currentInstruction.cut.y1;
     }
     else {
-      novaParte.targetY = this.space;
-      this.space -= (this.space - novaParte.h - 10);
-      novaParte.info = `W ${estado.cut.number}`;
+      this.refX = this.currentInstruction.cut.x1;
+    }
+    this.currentInstruction.part.h = this.currentInstruction.part.h - cutSize;
+
+    let newPart = {
+      x: this.currentInstruction.part.x,
+      y: this.yShaw,
+      w: this.currentInstruction.part.w,
+      h: cutSize > 0 ? cutSize : 0.1,
+      info: `Creating `,
+      oX: this.refX,
+      oY: this.refX
+    }
+    this.parts.push(newPart);
+
+    this.iCut++;
+    let nextCut;
+    if (this.iCut < this.cuts.length) {
+      nextCut = this.cuts[this.iCut];
+      deltaPhase = nextCut.phase - this.currentInstruction.cut.phase;
+      if (deltaPhase == 1) {
+        this.turnPart(newPart); //Colocar animaçao girando
+
+      }
+      if (deltaPhase == -1) {
+        this.unturnPart(newPart); //Colocar animaçao girando
+      }
+      this.nextInstructions.push({ part: this.currentInstruction.part, cut: null, targetY: this.yShaw - this.currentInstruction.part.h - newPart.h, done: false });
+      this.nextInstructions.push({ part: this.currentInstruction.part, cut: null, targetY: this.yShaw - this.currentInstruction.part.h, done: false });
+    }
+    if (this.currentInstruction.cut.data && this.currentInstruction.cut.data.partNumber) {
+      this.nextInstructions.push({ part: newPart, cut: null, targetY: this.ready, done: false });
+      this.ready += (cutSize + 10);
+      newPart.info = `P:${this.currentInstruction.cut.data.partNumber} C:${this.currentInstruction.cut.number}`;
     }
 
-
-    this.parts.push(novaParte);
-    estado.nextPart.push(estado.currentPart);
-    estado.nextPart.push(novaParte);
-
-    console.log(`CORTOU NOVA ${novaParte.info} CS:${cutSize} npH:${novaParte.h} + ${estado.currentPart.h} = ${antigaParge.h}`);
-
-    estado.cut = null;
+    else if (this.currentInstruction.cut.data && this.currentInstruction.cut.data.isCleanCut) {
+      this.nextInstructions.push({ part: newPart, cut: null, targetY: this.ready, done: false });
+      this.ready += 60;
+      newPart.info = `CLEAN:${this.currentInstruction.cut.number}`;
+    }
+    else {
+      this.nextInstructions.push({ part: newPart, cut: null, targetY: this.space, done: false });
+      this.space = (this.space - newPart.h - 10);
+      newPart.info = `WORK:${this.currentInstruction.cut.number}`;
+    }
+    console.log(`CORTOU NOVA ${newPart.info} CS:${cutSize} npH:${newPart.h} + ${this.currentInstruction.part} = ${partBeforeCut.h}`);
   }
+
 
   iniciaCorte() {
     //this.solution.plans.forEach(plan => {
     let i = 0;
     let j = 0;
-
     this.mensagem = `Iniciando layout ${i} ${j}`;
-
     let plan = this.solution.plans[i];
-
     let layout = plan.layouts[j];
     let board = layout.board;
-    let cuts = layout.cuts;
-    console.log(`Cuts ${cuts.length}`);
+    this.cuts = layout.cuts;
+    this.refX = board.startX;
+    this.refY = board.startY;
 
-    let estado = { nextPart: [], cut: null, pausa: 0, iCut: -1, aY: this.acaleracao, currentPart: { x: 0, y: 0 - board.height, w: board.width, h: board.height, info: "Board", targetY: this.yShaw - board.height }, cuts: cuts };
-    this.estadoV = estado;
-    this.parts.push(estado.currentPart);
-    console.log(`Estado NPS:${estado.nextPart.length} iCut:${estado.iCut} aY:${estado.aY} CY:${estado.currentPart.y} ${estado.cut ? JSON.stringify(estado.cut) : ''}`);
+    let firstPart = { x: 0, y: this.yShaw - board.height - 500, w: board.width, h: board.height, info: "Board", oX: this.productionLine.sawMachine.widthCleaningCut, oY: this.productionLine.sawMachine.heightCleaningCut };
+    this.parts.push(firstPart);
+
+    let firstCut = this.cuts[this.iCut];
+
+    this.nextInstructions.push({ part: firstPart, targetY: this.yShaw - board.height + firstCut.y1, cut: firstCut, done: false });//EXECUTA COMO PILHA
+
+    this.currentInstruction = this.nextInstructions.pop();
     let interval = setInterval(() => {
-      this.debug = `Estado NPS:${estado.nextPart.length} iCut:${estado.iCut} aY:${estado.aY} TY:${estado.currentPart.targetY} CY:${estado.currentPart.y} `;
-      this.deslocamento = `${Math.round(estado.currentPart.targetY - estado.currentPart.y)}`;
-      if (estado.pausa > 0) { // PAUSADO
-        estado.pausa--;
+      this.debug = ``;
+      this.deslocamento = `Ticks:${this.ticks++} Instructions:${this.nextInstructions.length} iCut:${this.iCut} D:${Math.round(this.currentInstruction.targetY - this.currentInstruction.part.y)} T:${Math.round(this.currentInstruction.targetY * 100) / 100} Y:${Math.round(this.currentInstruction.part.y * 100) / 100}}`;
+      if (this.pausa > 0) { // PAUSADO
+        this.pausa--;
+        this.debug = `Pausa ${this.pausa}`;
       }
-      else if (estado.iCut < 0) { //Animação Inicial
-        if (Math.abs(estado.currentPart.y - estado.currentPart.targetY) >= Math.abs(2 * estado.aY)) { //Não chegou
-          estado.currentPart.y += estado.aY;
-        }
-        else {  //Chegou
-          estado.currentPart.y = estado.currentPart.targetY; //para remover os erros dos passos
-          estado.iCut = 0;
-          estado.cut = cuts[estado.iCut];
-          this.atualizaMensagem(estado.cut);
-          estado.currentPart.targetY += (estado.cut.direction === "horizontal" ? estado.cut.y1 : estado.cut.x1);
-        }
-      }
-      else { //Movendo parte
-        if (Math.abs(estado.currentPart.y - estado.currentPart.targetY) > Math.abs(2 * estado.aY)) { //não chegou
-          estado.currentPart.y += estado.aY;
+      else { //Animando
+        if (Math.abs(this.currentInstruction.part.y - this.currentInstruction.targetY) > Math.abs(2 * this.aY)) { //Movendo parte
+          this.debug = `Animando`;
+          this.currentInstruction.part.y += this.aY;
         }
         else { //Chegou
-          estado.pausa = 100;
-          estado.currentPart.y = estado.currentPart.targetY; //para remover os erros dos passos
-          if (estado.cut) {
-            this.corta(estado);
-            estado.iCut++;
+          this.debug = `Chegou`;
+          this.currentInstruction.part.y = this.currentInstruction.targetY; //para remover os erros dos passos
+          this.currentInstruction.done = true;
+          this.oldInstructions.push(this.currentInstruction);
+          if (this.currentInstruction.cut) {
+            this.corta();
           }
-          else if (estado.nextPart.length > 0) {
-            estado.currentPart = estado.nextPart.pop();
-            estado.aY = estado.currentPart.y < estado.currentPart.targetY ? this.acaleracao : -this.acaleracao;
-          }
-          if (estado.iCut < cuts.length) {
-            estado.cut = cuts[estado.iCut];
-            this.verificaMudancaDeFase(estado);
+          if (this.nextInstructions.length > 0) {
+            this.currentInstruction = this.nextInstructions.pop();
+            this.aY = this.currentInstruction.part.y < this.currentInstruction.targetY ? this.velocidade : -this.velocidade;
           }
         }
       }
-      if (estado.iCut >= estado.cuts.length) {// acabou
+      if (!this.currentInstruction) {
+        clearInterval(interval);
+        console.log("FIM DAS INTRUCOES");
+        this.mensagem = "FIM DAS INTRUCOES";
+        this.pausa = 1000;
+      }
+      if (this.iCut >= this.cuts.length && this.nextInstructions.length === 0) {// Verifica se os cortes acabaram e não tem mais instruções para fazer
         clearInterval(interval);
         console.log("FIM");
         this.mensagem = "FIM do Layout";
-        estado.pausa = 10000;
+        this.pausa = 1000;
       }
-    }, 20);
+    }, 50);
   }
 
-  verificaMudancaDeFase(estado) {
-    if (estado.cut.phase > estado.cuts[estado.iCut - 1].phase) {//avançou uma fase
-      console.log(`avançou uma fase  ENL:${estado.nextPart.length} \n`);
-      if (estado.nextPart.length > 0) {
-        [estado.currentPart.w, estado.currentPart.h] = [estado.currentPart.h, estado.currentPart.w];
-      }
-      estado.currentPart.targetY -= (estado.currentPart.h + estado.nextPart.length > 0 ? estado.nextPart[estado.nextPart.length - 1].h : 0);
-      estado.aY = estado.currentPart.y < estado.currentPart.targetY ? this.acaleracao : -this.acaleracao;
-    }
-    else if (estado.cut.phase > estado.cuts[estado.iCut - 1].phase) {//retrocedeu uma fase
-      //Volta Giro 
-      [estado.currentPart.w, estado.currentPart.h] = [estado.currentPart.h, estado.currentPart.w];
-      estado.targetY -= estado.currentPart.h;
-      estado.aY = estado.currentPart.y < estado.targetY ? this.acaleracao : -this.acaleracao;
-    }
-  }
+
 
 }
