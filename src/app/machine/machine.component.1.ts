@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { MachineService } from '../machine.service';
 import { TagContentType } from '@angular/compiler';
 import { Jsonp } from '@angular/http';
-import { Router, RouterStateSnapshot, ActivatedRoute } from '@angular/router';
+
 
 
 @Component({
@@ -18,13 +18,11 @@ export class MachineComponent implements OnInit {
 
   ticks = 0;
   currentBoard;
-  velocidade = 10;
-  velocidadeJustMove = 10;
+  velocidade = 50;
+  velocidadeJustMove = 50;
   deslocamento = "none";
   messages = ["Carregando"];
   iCut = 0;
-  layoutParts = [];
-  mapLayoutParts = {};
   cuts = [];
   parts = [];
   workParts = [];
@@ -34,12 +32,10 @@ export class MachineComponent implements OnInit {
   solution;
   resume;
   productionLine;
-  workSpaceEnd = 3200 - 10; //Posição incial das peças de trabalho
-  partsBegin = 100; //Posição incial das peças prontas
-  sobrasBegin = 3200 + 10;
-
+  workSpaceEnd = 1200 - 10; //Posição incial das peças de trabalho
+  partsBegin = 1200 + 10; //Posição incial das peças prontas
+  sobrasBegin = 1200 + 10; //Posição incial das peças prontas
   nextInstructions = [];
-  oldInstructions = [];
   pausa = 0;
   currentInstruction = {
     part: { x: 0, y: 0, w: 0, h: 0, ox: 0, oy: 0, info: "" },
@@ -48,17 +44,7 @@ export class MachineComponent implements OnInit {
   };
   interval;
 
-  pI = 0;
-  pJ = 0;
-
-
-  constructor(private service: MachineService, private activatedRoute: ActivatedRoute) {
-    this.activatedRoute.queryParams.subscribe(params => {
-      this.pI = params['i'] | 0;
-      this.pJ = params['j'] | 0;
-      console.log(this.pI, this.pJ); // Print the parameter to the console. 
-    });
-  }
+  constructor(private service: MachineService) { }
   ngOnInit() {
     this.service.getSolution().then(s => {
       this.solution = s.solution;
@@ -73,122 +59,84 @@ export class MachineComponent implements OnInit {
   }
 
   initState() {
-    let i = this.pI;
-    let j = this.pJ;
-
-    for (let a = 0; a < this.solution.plans.length; a++) {
-      let plan = this.solution.plans[a];
-      for (let b = 0; b < plan.layouts.length; b++) {
-        console.log(`<a href="http://localhost:4200?i=${a}&j=${b}">L${a * 10 + b}</a>`);
-
-      }
-
-    }
-
+    let i = 0;
+    let j = 0;
     this.messages.push(`Iniciando layout ${i} ${j}`);
     let plan = this.solution.plans[i];
     let layout = plan.layouts[j];
     let board = layout.board;
     this.cuts = layout.cuts;
-    this.layoutParts = layout.parts;
-    this.layoutParts.forEach(p => {
-      this.mapLayoutParts[`P${p.part.id}`] = { w: p.part.c, h: p.part.l, r: p.part.rotate };
-    });
-
-    this.iCut = -1;
+    this.iCut = 0;
     let firstPart = { x: 0, y: -200, w: board.width, h: board.height, ox: 0, oy: 0, info: "Board" };
     this.parts.push(firstPart);
-    let firstCut = this.cuts[this.iCut + 1];
-    this.pushNextCutInstruction(firstPart, firstCut);
-
+    let firstCut = this.cuts[this.iCut];
+    this.nextInstructions.push({
+      part: firstPart,
+      attribute: "y",
+      target: firstCut.y2,
+      cut: firstCut,
+      velocidade: this.velocidade,
+      done: false,
+      distance: 200,
+    });
+    console.log("cut.number, cut.direction, cut.phase, cut.role, cut.x1, cut.x1, cut.y1, cut.y2, cutType, part.y, part.w, part.ox, part.oy, part.info");
     this.auto();
-
   }
 
   auto() {
     this.pausa = 10;
-    this.interval = setInterval(() => this.tick(), 50);
+    this.interval = setInterval(() => this.tick(), 5);
   }
 
   stop() {
     clearInterval(this.interval);
   }
   tick10() {
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 10; i++) {
       this.tick();
     }
   }
 
-  tick(manual = false) {
+  tick() {
     this.ticks++;
     if (this.currentInstruction.done) {
       if (this.nextInstructions.length > 0) {
         this.currentInstruction = this.nextInstructions.pop();
-        if (this.currentInstruction.cut && this.currentInstruction.cut.number === 7) {
-          console.log(JSON.stringify(this.currentInstruction.cut));
-          console.log(JSON.stringify(this.currentInstruction.part));
-          console.log(JSON.stringify(this.currentInstruction.attribute));
-          console.log(JSON.stringify(this.currentInstruction.target));
-        }
       }
       else {
         console.info("END");
         clearInterval(this.interval);
-        this.readyParts.sort((a, b) => a.info > b.info ? 1 : -1);
       }
 
     }
     else {
       this.currentInstruction.distance = Math.abs(this.currentInstruction.part[this.currentInstruction.attribute] - this.currentInstruction.target);
       if (this.currentInstruction.distance >= Math.abs(this.currentInstruction.velocidade)) {
-
-        // if (this.currentInstruction.part[this.currentInstruction.attribute] < this.currentInstruction.target) {
-        //   this.currentInstruction.part[this.currentInstruction.attribute] += this.currentInstruction.velocidade;
-        // }
-        // else {
-        //   this.currentInstruction.part[this.currentInstruction.attribute] -= this.currentInstruction.velocidade;
-        // }
         if (this.currentInstruction.part[this.currentInstruction.attribute] < this.currentInstruction.target) {
-          this.currentInstruction.part[this.currentInstruction.attribute] += this.currentInstruction.distance / 2;
+          this.currentInstruction.part[this.currentInstruction.attribute] += this.currentInstruction.velocidade;
         }
         else {
-          this.currentInstruction.part[this.currentInstruction.attribute] -= this.currentInstruction.distance / 2;
+          this.currentInstruction.part[this.currentInstruction.attribute] -= this.currentInstruction.velocidade;
         }
-
-
       }
       else {
-
         this.currentInstruction.part[this.currentInstruction.attribute] = this.currentInstruction.target;
         this.currentInstruction.distance = Math.abs(this.currentInstruction.part[this.currentInstruction.attribute] - this.currentInstruction.target);
         if (this.currentInstruction.cut) {
           this.cutHere();
-
         }
         this.currentInstruction.done = true;
-
-        if (this.currentInstruction.cut) {
-          //clearInterval(this.interval);
-        }
-
       }
-
     }
-
-  }
-
-  areaTotal() {
-    return this.parts.reduce((s, p) => s + p.h * p.w, 0);
-
   }
 
   turnPart90(part) {
     [part.w, part.h, part.ox, part.oy] = [part.h, part.w, part.oy, part.ox];
-    part.y = part.h;
+    part.y = part.h + part.w;
   }
   unTurnPart90(part) {
     [part.w, part.h, part.ox, part.oy] = [part.h, part.w, part.oy, part.ox];
-    part.y = part.h;
+    part.y = part.h + part.w;
   }
 
 
@@ -199,60 +147,50 @@ export class MachineComponent implements OnInit {
     let data = cut.data;
     let partBeforeCut = JSON.parse(JSON.stringify(part));
     let cutType = (!cut.data) ? 'W' : (cut.data.isCleaningCut) ? "C" : "P";
-
+    console.log(cut.number, cutType, cut.direction, cut.phase, cut.role, cut.x1, cut.x1, cut.y1, cut.y2, part.y, part.w, part.ox, part.oy, part.info);
 
     if (data && data.isCleaningCut) {
       part.h -= part.y;
-      part.ox = part.ox;
+      part.ox = part.x;
       part.oy = part.y;
       this.pushNextCutInstruction(part, nextCut);
     }
+
     if (!data) {
       this.cutWorkPart(part, partBeforeCut, cut, nextCut, false);
-
     }
 
     else if (data && data.partNumber) {
       this.cutWorkPart(part, partBeforeCut, cut, nextCut, true);
     }
 
+    console.log(cut.number, cutType, cut.direction, cut.phase, cut.role, cut.x1, cut.x1, cut.y1, cut.y2, part.y, part.w, part.ox, part.oy, part.info);
+    console.log("");
+
   }
 
-  loglog(...objs) {
-    objs.forEach((obj, i) => {
-      console.log(i, JSON.stringify(obj));
-    })
-  }
 
 
   cutWorkPart(part, partBeforeCut, cut, nextCut, ready) {
-
-    console.log(JSON.stringify(part));
-
-
-    part.oy = part.y;
-
+    part.h -= part.y;
     part.y = 0;
-
 
 
     let newPart = {
       x: part.x,
       y: this.productionLine.sawMachine.sawThickness + partBeforeCut.y,
       w: part.w,
-      h: partBeforeCut.y - this.productionLine.sawMachine.sawThickness - partBeforeCut.oy,
-      ox: partBeforeCut.ox,
-      oy: partBeforeCut.oy,
-      info: ready ? `Part ${cut.data.partNumber} (${cut.number}/${cut.phase}) ` : `Work (${cut.number}) `,
-      info2: ready ? " " +
-        this.mapLayoutParts[`P${cut.data.partNumber}`].w + "x" + this.mapLayoutParts[`P${cut.data.partNumber}`].h : 'X'
+      h: partBeforeCut.y - this.productionLine.sawMachine.sawThickness,
+      ox: partBeforeCut.x,
+      oy: partBeforeCut.y,
+      info: ready ? `Part ${cut.data.partNumber} (${cut.number}/${cut.phase}) ` : `Work (${cut.number}) `
     };
-    part.h -= newPart.h;
+
     this.parts.push(newPart);
+
 
     if (ready) {
       this.readyParts.push(newPart);
-
     }
     else {
       this.workParts.push(part);
@@ -260,30 +198,23 @@ export class MachineComponent implements OnInit {
 
     let sobra = false;
 
-
     if (nextCut) {
       let dPhases = nextCut.phase - cut.phase;
-      if (dPhases > 0) {
+      if (dPhases == 1) {
         this.turnPart90(newPart);
         this.pushNextCutInstruction(ready ? part : newPart, nextCut);
       }
-      if (dPhases < 0) {
-        console.log("DF", cut.number)
-        this.loglog(this.workParts);
+
+      if (dPhases == -1) {
+        sobra = true;
+        newPart.x = 2900 - newPart.w;
+        newPart.y = this.sobrasBegin;
+        this.sobrasBegin += 10 + newPart.h;
+        newPart.info = newPart.info.replace("Work", "Sobra");
 
         //this.unTurnPart90(newPart);
-        //        this.sobrasParts.push(part);
-        sobra = true;
-        part.x = 3000 - part.w;
-        part.y = this.sobrasBegin;
-        this.sobrasBegin += part.h + 20;
-        part.info = `Sobra (${cut.number}) ${part.info} `;
-        let workPart;
-        if (this.workParts.length > 0) workPart = this.workParts.pop();
-        if (workPart) {
-          this.pushNextCutInstruction(workPart, nextCut);
-        }
-
+        part = this.workParts.pop();
+        this.pushNextCutInstruction(part, nextCut);
       }
       if (dPhases == 0) {
         this.pushNextCutInstruction(ready ? part : newPart, nextCut);
@@ -291,19 +222,6 @@ export class MachineComponent implements OnInit {
 
     }
     if (ready) {
-      if (newPart.h > newPart.w) {
-        [newPart.h, newPart.w] = [newPart.w, newPart.h];
-      }
-      this.nextInstructions.push({
-        part: newPart,
-        attribute: "x",
-        target: 3300,
-        cut: undefined,
-        velocidade: this.velocidadeJustMove,
-        done: false,
-        distance: part.h
-
-      });
 
       this.nextInstructions.push({
         part: newPart,
@@ -313,12 +231,13 @@ export class MachineComponent implements OnInit {
         velocidade: this.velocidadeJustMove,
         done: false,
         distance: part.h
+
       });
+      this.partsBegin += 10 + newPart.h;
 
 
-      this.partsBegin += newPart.h + 30;
     }
-    else {
+    else if (!sobra) {
       this.nextInstructions.push({
         part: newPart,
         attribute: "y",
@@ -345,20 +264,20 @@ export class MachineComponent implements OnInit {
 
 
 
-  pushNextCutInstruction(part, cut, origem = 0) {
+  pushNextCutInstruction(part, cut) {
+
     this.iCut++;
     if (this.iCut < this.cuts.length) {
       let ni = {
         part: part,
         attribute: "y",
-        target: cut.phase % 2 === 1 ? cut.y2 - origem : cut.x2 - origem,
+        target: cut.phase % 2 === 1 ? cut.y2 - part.oy : cut.x2 - part.oy,
         cut: cut,
         velocidade: this.velocidade,
         done: false,
-        distance: 200,
+        distance: 0,
       };
       this.nextInstructions.push(ni);
-      this.nextInstructions = this.nextInstructions.slice();
 
       if (part.x > 0) {
         this.nextInstructions.push(
@@ -370,7 +289,7 @@ export class MachineComponent implements OnInit {
             cut: undefined,
             velocidade: this.velocidadeJustMove,
             done: false,
-            distance: 200,
+            distance: 0,
           }
 
         );
@@ -381,6 +300,3 @@ export class MachineComponent implements OnInit {
 
 
 }
-
-
-

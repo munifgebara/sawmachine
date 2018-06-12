@@ -6,16 +6,24 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { MachineComponent } from './machine/machine.component';
 import { ControlComponent } from './control/control.component';
 import { HttpModule } from '@angular/http';
+import { RouterModule } from '@angular/router';
+import { SimulatorComponent } from './simulator/simulator.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     MachineComponent,
-    ControlComponent
+    ControlComponent,
+    SimulatorComponent
   ],
   imports: [
     BrowserModule,
     HttpModule,
+    RouterModule.forRoot([{
+      path: '',
+      component: AppComponent
+    },
+    ]),
     NgbModule.forRoot()
   ],
   providers: [],

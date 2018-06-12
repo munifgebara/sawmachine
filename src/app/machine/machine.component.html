@@ -1,20 +1,56 @@
-<div>{{mensagem}}</div>
-<div>{{deslocamento}}</div>
-<div>{{debug}}</div>
+<div class="row">
+  <div class="col-6" style="border:dotted">
+    <svg width="100%" viewBox="-100 -3000 5000 7000">
+      <rect x="-100" y="-3000" width="5000" height="7000" style="fill:#dddddd;stroke-width:1;stroke:#000000" />
+      <rect x="-50" y="-2800" width="3100" height="6000" style="fill:#999999;stroke-width:1;stroke:#000000" />
+      <g *ngFor="let part of parts">
+        <rect [attr.x]="part.x" [attr.y]="part.y-part.h" [attr.width]="part.w" [attr.height]="part.h" style="fill:#A4DFFD;stroke-width:1;stroke:#000000;fill-opacity:0.5" [attr.transform]="part.transform" />
+        <text [attr.x]="part.x" [attr.y]="part.y-part.h+70" fill="#000000" font-family="arial" font-size="50">{{part.info}} {{r100(part.w)}}x{{r100(part.h)}} </text>
+      </g>
+      <g>
+        <rect x="-50" y="-10" width="3100" height="20" style="fill:#FFFF00;stroke-width:1;stroke:#000000;fill-opacity:0.5" />
+        <rect x="-50" y="-1850" width="3100" height="20" style="fill:#FFFFFF;stroke-width:1;stroke:#000000;fill-opacity:0.5" />
+      </g>
+    </svg>
+  </div>
+  <div class="col-6">Debug
+    <ul class="list-group">
+      <li class="list-group-item small">
+        <button (click)="tick(true)">Tick</button>
+        <button (click)="tick10()">10 Ticks</button>
+        <button (click)="auto()">Auto</button>
+        <button (click)="stop()">Stop</button>
+      </li>
 
-<svg width="800" viewBox="-100 -2000 3200 5400">
-  <rect x="-100" y="-2000" width="3200" height="5400" style="fill:#dddddd;stroke-width:1;stroke:#000000" />
-  <rect x="-50" y="-50" width="3100" height="3050" style="fill:#999999;stroke-width:1;stroke:#000000" />
-  <g *ngFor="let part of parts">
-    <rect [attr.x]="part.x" [attr.y]="part.y" [attr.width]="part.w" [attr.height]="part.h" style="fill:#A4DFFD;stroke-width:1;stroke:#000000" />
-    <text [attr.x]="part.x" [attr.y]="part.y+70" fill="#000000" font-family="arial" font-size="50">{{part.info}} {{part.w}}x{{part.h}}</text>
-  </g>
+      <li class="list-group-item small" *ngIf="parts"> AreaTotal:{{areaTotal()}} </li>
+      <li class="list-group-item small"> nextInstructions </li>
+      <li class="list-group-item small" *ngFor="let i of nextInstructions">{{i.part.info}} {{i.part.w}}x{{i.part.h}} {{i.cut?.data?.isCleaningCut?"Cleaning":i.data?"Cut":"Move "+i.attribute+i.target}} {{i.cut?.data?.partNumber}} {{i.cut?.phase}} {{i.cut?.x1}} {{i.cut?.y1}}
+        {{i.cut?.direction}}
+      </li>
+      <li class="list-group-item small"> READY </li>
+      <li class="list-group-item small" *ngFor="let part of readyParts"> {{part.info}} {{r100(part.w)}}x{{r100(part.h)}} {{part.info2}} </li>
+      <li class="list-group-item small"> WORK</li>
+      <li class="list-group-item small" *ngFor="let part of workParts"> {{part.info}} {{r100(part.w)}}x{{r100(part.h)}} </li>
+      <li class="list-group-item small"> SOBRAS</li>
+      <li class="list-group-item small" *ngFor="let part of sobrasParts"> {{part.info}} {{r100(part.w)}}x{{r100(part.h)}}</li>
+      <li class="list-group-item small"> todos</li>
+      <li class="list-group-item small" *ngFor="let part of parts"> {{part.info}} {{r100(part.w)}}x{{r100(part.h)}}</li>
 
-  <g>
-    <rect x="-50" y="490" width="3100" height="20" style="fill:#FFFF00;stroke-width:1;stroke:#000000;fill-opacity:0.5" />
+      <li>
+        <a href="http://localhost:4200?i=0&j=0">L0</a>
+        <a href="http://localhost:4200?i=1&j=0">L10</a>
+        <a href="http://localhost:4200?i=1&j=1">L11</a>
+        <a href="http://localhost:4200?i=1&j=2">L12</a>
+        <a href="http://localhost:4200?i=2&j=0">L20</a>
+        <a href="http://localhost:4200?i=3&j=0">L30</a>
+        <a href="http://localhost:4200?i=3&j=1">L31</a>
+        <a href="http://localhost:4200?i=3&j=2">L32</a>
+        <a href="http://localhost:4200?i=3&j=3">L33</a>
+        <a href="http://localhost:4200?i=3&j=4">L34</a>
+      </li>
 
 
-  </g>
+    </ul>
+  </div>
 
-
-</svg>
+</div>

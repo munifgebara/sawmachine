@@ -20,6 +20,14 @@ export class MachineService {
       .catch(this.errorHandler);
   }
 
+  getSolution2() {
+    return new Promise(() => {
+
+    })
+  }
+
+
+
 
 
 }
