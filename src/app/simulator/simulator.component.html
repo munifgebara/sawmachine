@@ -1,21 +1,30 @@
 <div class="row">
-  <div class="col-6" style="border:dotted">
+  <div class="col-8" style="border:dotted">
     <svg width="100%" viewBox="-100 -3000 5100 9000">
       <rect x="-100" y="-3000" width="5100" height="9000" style="fill:#dddddd;stroke-width:1;stroke:#000000" />
       <rect x="-50" y="-2950" width="3100" height="6000" style="fill:#999999;stroke-width:1;stroke:#000000" />
+      <g *ngFor="let part of expectedParts">
+        <rect [attr.x]="part.x" [attr.y]="3200+part.y" [attr.width]="part.w" [attr.height]="part.h" fill="#eeeeee" stroke="black"
+          stroke-width="10" fill-opacity="0.8" stroke-opacity="1" />
+      </g>
+
       <g *ngFor="let part of parts" [attr.transform]="tansform(part)">
 
 
-        <rect [attr.x]="part.x" [attr.y]="part.y" [attr.width]="part.w" [attr.height]="part.h" [attr.fill]="part.color" stroke="black" stroke-width="10" fill-opacity="0.8" stroke-opacity="1" />
-        <text [attr.x]="part.x" [attr.y]="part.y-70" fill="#000000" font-family="arial" font-size="80" [attr.transform]="tansform2(part)">{{part.info}} {{r100(part.w)}}x{{r100(part.h)}} {{r100(part.x)}}x{{r100(part.y)}} {{r100(part.ox)}}x{{r100(part.oy)}}</text>
+        <rect [attr.x]="part.x" [attr.y]="part.y" [attr.width]="part.w" [attr.height]="part.h" [attr.fill]="part.color" stroke="black"
+          stroke-width="10" fill-opacity="0.8" stroke-opacity="1" />
+        <!-- <text [attr.x]="part.x" [attr.y]="part.y" fill="#000000" font-family="arial" font-size="80" [attr.transform]="tansform2(part)">{{part.info}} {{r100(part.w)}}x{{r100(part.h)}} {{r100(part.x)}}x{{r100(part.y)}} {{r100(part.ox)}}x{{r100(part.oy)}}</text> -->
+        <text [attr.x]="part.x" [attr.y]="part.y" fill="#000000" font-family="arial" font-size="80" [attr.transform]="tansform2(part)">{{part.info}}</text>
       </g>
+
+
+
       <g>
         <rect x="-50" y="-10" width="3100" height="20" style="fill:#FFFF00;stroke-width:1;stroke:#000000;fill-opacity:0.5" />
-
       </g>
     </svg>
   </div>
-  <div class="col-6">
+  <div class="col-4">
     <ul class="list-group">
       <li class="list-group-item small">
         <button (click)="tick(true)">Tick</button>
@@ -25,23 +34,30 @@
         {{automatic?'Automático':'Manual'}}
 
       </li>
-      <li class="list-group-item small"> SawThickness:{{sawThickness}} Saw.y:{{sawY}} Message:{{message}} WorkPars stack {{workPartsStack.length}} Instructions {{instructionStack.length}}</li>
+      <li class="list-group-item small"> SawThickness:{{sawThickness}} Saw.y:{{sawY}} Message:{{message}} WorkPars stack {{workPartsStack.length}} Instructions
+        {{instructionStack.length}}
+      </li>
 
 
       <li class="list-group-item small" *ngIf="currentInstruction">
-        Corrente {{currentInstruction.part.info}} {{currentInstruction.attribute}} {{currentInstruction.part[currentInstruction.attribute]}} => {{ currentInstruction.targetValue}} </li>
+        Corrente {{currentInstruction.part.info}} {{currentInstruction.attribute}} {{currentInstruction.part[currentInstruction.attribute]}}
+        => {{ currentInstruction.targetValue}} </li>
 
-      <li class="list-group-item small" *ngIf="currentInstruction?.cut">Corrent N:{{currentInstruction.cut.number}} F:{{currentInstruction.cut.phase}} P:{{currentInstruction.cut.x1===currentInstruction.cut.x2?currentInstruction.cut.x1:currentInstruction.cut.y1}} D:{{currentInstruction.cut.direction}}
-        {{currentInstruction.cut.data?currentInstruction.cut.partNumber?"Final":"Limpeza":"Trabalho"}} {{currentInstruction.done?"DONE":"NOT DONE"}}
+      <li class="list-group-item small" *ngIf="currentInstruction?.cut">Corrent N:{{currentInstruction.cut.number}} F:{{currentInstruction.cut.phase}} P:{{currentInstruction.cut.x1===currentInstruction.cut.x2?currentInstruction.cut.x1:currentInstruction.cut.y1}}
+        D:{{currentInstruction.cut.direction}} {{currentInstruction.cut.data?currentInstruction.cut.partNumber?"Final":"Limpeza":"Trabalho"}}
+        {{currentInstruction.done?"DONE":"NOT DONE"}}
       </li>
 
       <span *ngFor="let nextInstruction of instructionStack">
-        <li class="list-group-item small">Na pilha {{nextInstruction.part.info}} {{nextInstruction.attribute}} {{nextInstruction.part[nextInstruction.attribute]}} => {{ nextInstruction.targetValue}}</li>
-        <li class="list-group-item small" *ngIf="nextInstruction?.cut">Corrent N:{{nextInstruction.cut.number}} F:{{nextInstruction.cut.phase}} P:{{nextInstruction.cut.x1===nextInstruction.cut.x2?nextInstruction.cut.x1:nextInstruction.cut.y1}} D:{{nextInstruction.cut.direction}}
-          {{nextInstruction.cut.data?nextInstruction.cut.partNumber?"Final":"Limpeza":"Trabalho"}} {{nextInstruction.done?"DONE":"NOT DONE"}}
+        <li class="list-group-item small">Na pilha {{nextInstruction.part.info}} {{nextInstruction.attribute}} {{nextInstruction.part[nextInstruction.attribute]}}
+          => {{ nextInstruction.targetValue}}</li>
+        <li class="list-group-item small" *ngIf="nextInstruction?.cut">Corrent N:{{nextInstruction.cut.number}} F:{{nextInstruction.cut.phase}} P:{{nextInstruction.cut.x1===nextInstruction.cut.x2?nextInstruction.cut.x1:nextInstruction.cut.y1}}
+          D:{{nextInstruction.cut.direction}} {{nextInstruction.cut.data?nextInstruction.cut.partNumber?"Final":"Limpeza":"Trabalho"}}
+          {{nextInstruction.done?"DONE":"NOT DONE"}}
         </li>
       </span>
-      <li class="list-group-item small" *ngIf="cuts&&iCut<cuts.length">Próximo N:{{cuts[iCut].number}} F:{{cuts[iCut].phase}} P:{{cuts[iCut].x1===cuts[iCut].x2?cuts[iCut].x1:cuts[iCut].y1}} D:{{cuts[iCut].direction}} {{cuts[iCut].data?cuts[iCut].partNumber?"Final":"Limpeza":"Trabalho"}}
+      <li class="list-group-item small" *ngIf="cuts&&iCut<cuts.length">Próximo N:{{cuts[iCut].number}} F:{{cuts[iCut].phase}} P:{{cuts[iCut].x1===cuts[iCut].x2?cuts[iCut].x1:cuts[iCut].y1}}
+        D:{{cuts[iCut].direction}} {{cuts[iCut].data?cuts[iCut].partNumber?"Final":"Limpeza":"Trabalho"}}
       </li>
 
 
@@ -49,7 +65,8 @@
       <li class="list-group-item small">Prontas</li>
       <li class="list-group-item small" *ngFor="let part of partsReadyList"> {{part.info}} {{r100(part.w)}}x{{r100(part.h)}} {{info2(part)}}</li>
       <li class="list-group-item small">WorkParts</li>
-      <li class="list-group-item small" *ngFor="let part of workPartsStack"> {{part.info}} S:{{r100(part.w)}}x{{r100(part.h)}} O:{{r100(part.ox)}}x{{r100(part.oy)}} P: {{r100(part.x)}}x{{r100(part.y)}} </li>
+      <li class="list-group-item small" *ngFor="let part of workPartsStack"> {{part.info}} S:{{r100(part.w)}}x{{r100(part.h)}} O:{{r100(part.ox)}}x{{r100(part.oy)}} P: {{r100(part.x)}}x{{r100(part.y)}}
+      </li>
       <li class="list-group-item small">All</li>
       <!--<li class="list-group-item small" *ngFor="let part of parts"> {{part.info}} S:{{r100(part.w)}}x{{r100(part.h)}} O:{{r100(part.ox)}}x{{r100(part.oy)}} P: {{r100(part.x)}}x{{r100(part.y)}} </li>-->
 
