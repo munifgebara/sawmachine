@@ -3,6 +3,9 @@
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 6.0.7.
 
 
+[Simulator](https://raw.githubusercontent.com/munifgebara/munifgebara.github.io/master/images/saw.png)
+
+
 Angular project to simulate a MDF SawMachine to make optmal guillotine cuts from a wood board.
 
 
